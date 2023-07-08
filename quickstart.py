@@ -3,10 +3,8 @@ from datetime import timezone
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-from config import API_KEY,MPAN,SERIAL
+from config import API_KEY,MPAN,SERIAL,TIMESTAMP_PATH,CONSUMPTION_FILE
 
-TIMESTAMP_PATH = 'octopus_last_read'
-CONSUMPTION_FILE = 'consumption.json'
 
 endpoints = {
     'consumption':'https://api.octopus.energy/v1/electricity-meter-points/%(mpan)s/meters/%(serial)s/consumption/',
