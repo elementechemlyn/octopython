@@ -3,9 +3,9 @@ from datetime import timezone
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+from config import API_KEY
 
 TIMESTAMP_PATH = 'octopus_last_read'
-API_KEY = 'sk_live_uqdk00ZV30SsNWTsdn1KFakx:'
 MPAN = '1300010021306'
 SERIAL = '22J0278538'
 CONSUMPTION_FILE = 'consumption.json'
