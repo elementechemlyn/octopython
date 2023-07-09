@@ -23,8 +23,7 @@ def store_consupmtion(json_data):
     f.write('\n')
     f.close()
     timestr = time.strftime("%Y%m%d%H%M%S")
-    new_name = CONSUMPTION_FILE.replace('.','.%s.' % (timestr))
-    p.rename(new_name)
+    p.rename(p.with_stem("%s.%s" % (p.stem,timestr)))
 
 def make_auth():
     return HTTPBasicAuth(API_KEY,'')
@@ -141,8 +140,7 @@ def store_tariffs(rates:list):
     f.close()
     #hive off the file
     timestr = time.strftime("%Y%m%d%H%M%S")
-    new_name = TARIFF_FILE.replace('.','.%s.' % (timestr))
-    p.rename(new_name)
+    p.rename(p.with_stem("%s.%s" % (p.stem,timestr)))
 
 if __name__=="__main__":
     #Get most recent consumption
