@@ -1,4 +1,5 @@
 *.json
 config.py
 __pycache__
-
+octopus_last_tariff_read
+octopus_last_read
