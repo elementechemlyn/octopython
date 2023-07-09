@@ -51,7 +51,7 @@ def get_last_date_from_consumption(response_json:dict):
 def get_last_date_from_rates(rates:list):
     if len(rates)==0:
         return None
-    interval_ends = [datetime.datetime.fromisoformat(x['valid_to']) for x in rates]
+    interval_ends = [datetime.datetime.fromisoformat(x['valid_to'].replace('Z','')) for x in rates]
     return max(interval_ends)
 
 def get_consumption(start_time:datetime.datetime,end_time:datetime.datetime):
