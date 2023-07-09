@@ -1,9 +1,8 @@
-import datetime
-from datetime import timezone
 import requests
 from requests.auth import HTTPBasicAuth
-import json
-from config import API_KEY,MPAN,SERIAL,CONSUMPTION_TIMESTAMP_PATH,CONSUMPTION_FILE,TARIFF_TIMESTAMP_PATH,TARIFF_FILE
+from config import API_KEY,MPAN,SERIAL
+import time
+import datetime
 import re
 
 endpoints = {
@@ -14,48 +13,27 @@ endpoints = {
     'tariff':'https://api.octopus.energy/v1/products/%(product)s/electricity-tariffs/%(tariff)s/standard-unit-rates/'
 }
 
-def store_consupmtion(json_data):
-    f = open(CONSUMPTION_FILE,"+a")
-    f.write(json.dumps(json_data))
-    f.write('\n')
-    f.close()
-
-def make_auth():
-    return HTTPBasicAuth(API_KEY,'')
-
 def dt_format(dt:datetime.datetime):
     return dt.isoformat(timespec='minutes').replace("+00:00", "Z")
 
 def from_iso(iso_str:str):
     return datetime.datetime.fromisoformat(iso_str.replace("Z","+00:00"))
+    
+def make_auth():
+    return HTTPBasicAuth(API_KEY,'')
 
-def drop_timestamp(tspath:str=CONSUMPTION_TIMESTAMP_PATH,ts:datetime.datetime = None):
-    with open(tspath,'w') as f:
-        if ts==None:
-            ts = datetime.datetime.now(timezone.utc)
-        f.write(str(ts.timestamp()))
-    return ts
+def api_call(url,retry=3):
+    retry_count = 0
+    while 1:
+        try:
 
-def get_timestamp(tspath:str=CONSUMPTION_TIMESTAMP_PATH):
-    try:
-        with open(tspath) as f:
-            ts = float(f.read())
-            ts = datetime.datetime.fromtimestamp(ts,tz=timezone.utc)
-    except FileNotFoundError:
-        ts = datetime.datetime.now(tz=timezone.utc)
-    return ts
-
-def get_last_date_from_consumption(response_json:dict):
-    if response_json['count']==0:
-        return None
-    interval_ends = [from_iso(x['interval_end']) for x in response_json['results']]
-    return max(interval_ends)
-
-def get_last_date_from_rates(rates:list):
-    if len(rates)==0:
-        return None
-    interval_ends = [from_iso(x['valid_to']) for x in rates]
-    return max(interval_ends)
+            requests.get(url,auth=make_auth())
+        except Exception as x:
+            if retry_count<retry:
+                time.sleep(10)
+                retry_count += 1
+            else:
+                raise x
 
 def get_consumption(start_time:datetime.datetime,end_time:datetime.datetime):
     param_str = 'period_from=%s&period_to=%s' % (dt_format(start_time),dt_format(end_time))
@@ -64,7 +42,6 @@ def get_consumption(start_time:datetime.datetime,end_time:datetime.datetime):
     print(url)
     resp = requests.get(url,auth=make_auth())
     print(resp.status_code)
-    #print(resp.json())
     return resp.json()
 
 def get_current_products(brand='OCTOPUS_ENERGY',pattern='^AGILE-FLEX.+'):
@@ -85,6 +62,7 @@ def get_product(product_code):
     url = endpoints['product'] % {'product_code':product_code}
     resp = requests.get(url,auth=make_auth())
     print(resp.status_code)
+    #print(resp.text)
     return resp.json()
 
 def get_tariff(product_code,tariff_code,start_time):
@@ -127,25 +105,13 @@ def get_current_agile_rates(start_time):
     print(len(tariff))
     return(tariff)
 
-def store_tariffs(rates:list):
-    f = open(TARIFF_FILE,"+a")
-    f.write(json.dumps(rates))
-    f.write('\n')
-    f.close()
-
-if __name__=="__main__":
-    #Get most recent consumption
-    last_ts = get_timestamp(CONSUMPTION_TIMESTAMP_PATH)
-    consumption = get_consumption(last_ts,datetime.datetime.now(tz=timezone.utc))
-    end_ts = get_last_date_from_consumption(consumption)
-    if end_ts:
-        store_consupmtion(consumption)
-        drop_timestamp(CONSUMPTION_TIMESTAMP_PATH,ts=end_ts)
-    #Get agile tariffs
-    last_ts = get_timestamp(TARIFF_TIMESTAMP_PATH)
-    rates = get_current_agile_rates(last_ts)
-    print(rates)
-    end_ts = get_last_date_from_rates(rates)
-    if end_ts:
-        store_tariffs(rates)
-        drop_timestamp(TARIFF_TIMESTAMP_PATH,ts=end_ts)
+def get_current_var_rates(starttime):
+    gsp = get_gsp()
+    products = get_current_products(pattern='VAR-22-11-01')
+    if len(products)>1:
+        raise RuntimeError("Got more than one VAR product!!!")
+    var_product = products[0]['code']
+    product = get_product(var_product)
+    gsp_tariff = product['single_register_electricity_tariffs'][gsp]
+    print(gsp_tariff)
+    #print(product)
