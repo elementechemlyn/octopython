@@ -5,6 +5,8 @@ from requests.auth import HTTPBasicAuth
 import json
 from config import API_KEY,MPAN,SERIAL,CONSUMPTION_TIMESTAMP_PATH,CONSUMPTION_FILE,TARIFF_TIMESTAMP_PATH,TARIFF_FILE
 import re
+import time
+from pathlib import Path
 
 endpoints = {
     'consumption':'https://api.octopus.energy/v1/electricity-meter-points/%(mpan)s/meters/%(serial)s/consumption/',
@@ -15,10 +17,14 @@ endpoints = {
 }
 
 def store_consupmtion(json_data):
-    f = open(CONSUMPTION_FILE,"+a")
+    p = Path(CONSUMPTION_FILE)
+    f = p.open("+a")
     f.write(json.dumps(json_data))
     f.write('\n')
     f.close()
+    timestr = time.strftime("%Y%m%d%H%M%S")
+    new_name = CONSUMPTION_FILE.replace('.','.%s.' % (timestr))
+    p.rename(new_name)
 
 def make_auth():
     return HTTPBasicAuth(API_KEY,'')
@@ -128,10 +134,15 @@ def get_current_agile_rates(start_time):
     return(tariff)
 
 def store_tariffs(rates:list):
-    f = open(TARIFF_FILE,"+a")
+    p = Path(TARIFF_FILE)
+    f = p.open("+a")
     f.write(json.dumps(rates))
     f.write('\n')
     f.close()
+    #hive off the file
+    timestr = time.strftime("%Y%m%d%H%M%S")
+    new_name = TARIFF_FILE.replace('.','.%s.' % (timestr))
+    p.rename(new_name)
 
 if __name__=="__main__":
     #Get most recent consumption
