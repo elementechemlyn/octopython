@@ -12,18 +12,24 @@ def _mock_api_call(self,url:str, params:list=None):
         url = '%s%s' % (url,self._build_param_string(params))
     return url
 
-# This method will be used by the mock to replace requests.get
+# This method will replace requests.get to test for url building
 def mocked_requests_get(*args, **kwargs):
-    class MockResponse:
-        def __init__(self, json_data, status_code):
-            self.json_data = json_data
-            self.status_code = status_code
-
-        def json(self):
-            return self.json_data
     return args[0],kwargs.get('params')
 
-class TestClientUrls(unittest.TestCase):
+# This method will replace requests.get to test for error retries
+def mocked_requests_error(*args, **kwargs):
+    raise requests.HTTPError
+
+class TestClient(unittest.TestCase):
+
+    @mock.patch('requests.get', side_effect=mocked_requests_error)
+    def test_retries(self,mock_get):
+        client = OctopusClient('foo_key',retry_count=2,retry_wait=1)
+        self.assertRaises(requests.HTTPError,client.get_products)
+        self.assertEqual(mock_get.call_count,2)
+        client = OctopusClient('foo_key',retry_count=3,retry_wait=1)
+        self.assertRaises(requests.HTTPError,client.get_products)
+        self.assertEqual(mock_get.call_count,5)
 
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_products(self,mock_get):

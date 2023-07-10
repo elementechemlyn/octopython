@@ -16,8 +16,8 @@ class OctopusClient(object):
 
     def __init__(self,api_key,retry_count=3,retry_wait=5):
         self.api_key = api_key
-        self.retry_count = 3
-        self.retry_wait=5
+        self.retry_count = retry_count
+        self.retry_wait=retry_wait
 
     """
     Build an http auth header with api key is username and an empty password
@@ -47,9 +47,9 @@ class OctopusClient(object):
                 resp = requests.get(url,params=params,auth=self._make_auth())
                 return resp
             except Exception as x:
+                retry_count += 1
                 if retry_count<self.retry_count:
                     time.sleep(self.retry_wait)
-                    retry_count += 1
                 else:
                     raise x
         
