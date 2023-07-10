@@ -1,5 +1,6 @@
 import unittest
-from octopys.client import OctopusClient
+import octopys.client
+from octopys.client import OctopusBasicClient
 import octopys.utils as utils
 from unittest import mock
 import requests
@@ -20,20 +21,25 @@ def mocked_requests_get(*args, **kwargs):
 def mocked_requests_error(*args, **kwargs):
     raise requests.HTTPError
 
-class TestClient(unittest.TestCase):
+class TestBasicClient(unittest.TestCase):
+
+    def test_create_client(self):
+        octopys.client.API_KEY=None
+        self.assertRaises(ValueError,OctopusBasicClient)
+        client = OctopusBasicClient('foo_key')
 
     @mock.patch('requests.get', side_effect=mocked_requests_error)
     def test_retries(self,mock_get):
-        client = OctopusClient('foo_key',retry_count=2,retry_wait=1)
+        client = OctopusBasicClient('foo_key',retry_count=2,retry_wait=1)
         self.assertRaises(requests.HTTPError,client.get_products)
         self.assertEqual(mock_get.call_count,2)
-        client = OctopusClient('foo_key',retry_count=3,retry_wait=1)
+        client = OctopusBasicClient('foo_key',retry_count=3,retry_wait=1)
         self.assertRaises(requests.HTTPError,client.get_products)
         self.assertEqual(mock_get.call_count,5)
 
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_products(self,mock_get):
-        client = OctopusClient('foo_key')
+        client = OctopusBasicClient('foo_key')
         url,params = client.get_products()
         self.assertEqual(url, 'https://api.octopus.energy/v1/products/')
         self.assertIsNone(params)
@@ -42,7 +48,7 @@ class TestClient(unittest.TestCase):
     def test_get_product(self,mock_get):
         now = datetime.now()
         now_str = utils.to_iso(now)
-        client = OctopusClient('foo_key')
+        client = OctopusBasicClient('foo_key')
         url,params = client.get_product('pcode')
         self.assertEqual(url, 'https://api.octopus.energy/v1/products/pcode/')
         self.assertIsNone(params)
@@ -55,7 +61,7 @@ class TestClient(unittest.TestCase):
     def test_list_tariff_charges(self,mock_get):
         now = datetime.now()
         now_str = utils.to_iso(now)
-        client = OctopusClient('foo_key')
+        client = OctopusBasicClient('foo_key')
         url,params = client.list_tariff_charges('pcode','tcode')
         self.assertEqual(url, 'https://api.octopus.energy/v1/products/pcode/electricity-tariffs/tcode/standard-unit-rates/')
         url,params = client.list_tariff_charges('pcode','tcode',period_from=now)
@@ -70,14 +76,15 @@ class TestClient(unittest.TestCase):
 
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_meter_point(self,mock_get):
-        client = OctopusClient('foo_key')
+        client = OctopusBasicClient('foo_key')
+        self.assertRaises(ValueError,OctopusBasicClient)
         url,params = client.get_meter_point('foo')
         self.assertEqual(url, 'https://api.octopus.energy/v1/electricity-meter-points/foo/')
         self.assertIsNone(params)
 
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_consumption(self,mock_get):
-        client = OctopusClient('foo_key')
+        client = OctopusBasicClient('foo_key')
         now = datetime.now()
         now_str = utils.to_iso(now)
         url,params = client.get_consumption('mpan','serial')

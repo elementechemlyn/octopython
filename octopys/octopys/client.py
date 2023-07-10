@@ -3,6 +3,7 @@ import requests.auth
 import time
 from datetime import datetime
 from . import utils
+import os
 
 endpoints = {
     'consumption':'https://api.octopus.energy/v1/electricity-meter-points/%(mpan)s/meters/%(serial)s/consumption/',
@@ -12,10 +13,58 @@ endpoints = {
     'tariff':'https://api.octopus.energy/v1/products/%(product_code)s/electricity-tariffs/%(tariff)s/standard-unit-rates/'
 }
 
-class OctopusClient(object):
+API_KEY = os.environ.get('OCTOPYS_API_KEY')
+MPAN = os.environ.get('OCTOPYS_MPAN')
+SERIAL = os.environ.get('OCTOPYS_SERIAL')
 
-    def __init__(self,api_key,retry_count=3,retry_wait=5):
+class OctopusClient(object):
+    def __init__(self,api_key:str=API_KEY,retry_count:int=3,retry_wait:int=5):
         self.api_key = api_key
+        if self.api_key==None:
+            raise ValueError("API Key must be provided.")
+        self.retry_count = retry_count
+        self.retry_wait=retry_wait
+        self.client = OctopusBasicClient(api_key,retry_count,retry_wait)
+
+    def _yield_responses(self,resp):
+            while True:
+                if resp.status_code==200:
+                    json_payload = resp.json()
+                    yield resp.status_code,json_payload
+                    if json_payload['next']==None:
+                        break
+                    else:
+                        resp = self.client.get_next(json_payload['next'])
+                else:
+                    yield resp.status_code,resp.text
+                    break
+
+    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at=None):
+        resp = self.client.get_products(is_variable,is_green,is_tracker,is_prepay,is_business,available_at)
+        return self._yield_responses(resp)
+
+    def get_product(self,product_code:str,tariffs_active_at:datetime=None):
+        resp = self.client.get_product(product_code,tariffs_active_at)
+        return self._yield_responses(resp)
+    
+    def list_tariff_charges(self,product_code:str,tariff_code:str,period_from:datetime=None,period_to:datetime=None,page_size:int=None):
+        resp = self.client.list_tariff_charges(product_code,tariff_code,period_from,period_to,page_size)
+        return self._yield_responses(resp)
+
+    def get_meter_point(self,mpan:str=MPAN):
+        resp = self.client.get_meter_point(mpan)
+        return self._yield_responses(resp)
+
+    def get_consumption(self,mpan:str=MPAN,serial:str=SERIAL,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
+        resp = self.client.get_consumption(mpan,serial,period_from,period_to,page_size,order_by,group_by)
+        return self._yield_responses(resp)
+
+class OctopusBasicClient(object):
+
+    def __init__(self,api_key:str=API_KEY,retry_count:int=3,retry_wait:int=5):
+        self.api_key = api_key
+        if self.api_key==None:
+            raise ValueError("API Key must be provided.")
         self.retry_count = retry_count
         self.retry_wait=retry_wait
 
@@ -52,7 +101,11 @@ class OctopusClient(object):
                     time.sleep(self.retry_wait)
                 else:
                     raise x
-        
+
+    def get_next(self,next_url:str):
+        resp = self._api_call(next_url)
+        return resp
+            
     def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at=None):
         url = endpoints['products']
         resp = self._api_call(url)    
@@ -74,12 +127,18 @@ class OctopusClient(object):
         resp = self._api_call(url,params)    
         return resp
 
-    def get_meter_point(self,mpan:str):
+    def get_meter_point(self,mpan:str=MPAN):
+        if(mpan==None):
+            raise ValueError("MPAN must be provided")
         url = endpoints['meterpoint'] % {'mpan':mpan}
         resp = self._api_call(url)    
         return resp
 
-    def get_consumption(self,mpan:str,serial:str,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
+    def get_consumption(self,mpan:str=MPAN,serial:str=SERIAL,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
+        if(mpan==None):
+            raise ValueError("MPAN must be provided")
+        if(serial==None):
+            raise ValueError("Serial must be provided")
         if((not order_by==None) and (order_by not in ['period','-period'])):
             raise ValueError("invalid order_by value")
         if((not group_by==None) and (group_by not in ['hour','day','week','month','quarter'])):
