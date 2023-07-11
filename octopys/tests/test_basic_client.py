@@ -4,6 +4,7 @@ from octopys.client import OctopusBasicClient
 import octopys.utils as utils
 from unittest import mock
 import requests
+import os
 
 from datetime import datetime
 
@@ -24,8 +25,10 @@ def mocked_requests_error(*args, **kwargs):
 class TestBasicClient(unittest.TestCase):
 
     def test_create_client(self):
-        octopys.client.API_KEY=None
-        self.assertRaises(ValueError,OctopusBasicClient)
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertRaises(ValueError,OctopusBasicClient)
+        with mock.patch.dict(os.environ, {'OCTOPYS_API_KEY':'api_key'}, clear=True):
+            client = OctopusBasicClient()
         client = OctopusBasicClient('foo_key')
 
     @mock.patch('requests.get', side_effect=mocked_requests_error)
@@ -77,7 +80,10 @@ class TestBasicClient(unittest.TestCase):
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_meter_point(self,mock_get):
         client = OctopusBasicClient('foo_key')
-        self.assertRaises(ValueError,OctopusBasicClient)
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertRaises(ValueError,client.get_meter_point)
+        with mock.patch.dict(os.environ, {'OCTOPYS_MPAN':'foo'}, clear=True):
+            client.get_meter_point()
         url,params = client.get_meter_point('foo')
         self.assertEqual(url, 'https://api.octopus.energy/v1/electricity-meter-points/foo/')
         self.assertIsNone(params)
@@ -85,6 +91,10 @@ class TestBasicClient(unittest.TestCase):
     @mock.patch('requests.get', side_effect=mocked_requests_get)
     def test_get_consumption(self,mock_get):
         client = OctopusBasicClient('foo_key')
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertRaises(ValueError,client.get_consumption)
+        with mock.patch.dict(os.environ, {'OCTOPYS_MPAN':'foo','OCTOPYS_SERIAL':'bar'}, clear=True):
+            client.get_consumption()
         now = datetime.now()
         now_str = utils.to_iso(now)
         url,params = client.get_consumption('mpan','serial')

@@ -13,15 +13,13 @@ endpoints = {
     'tariff':'https://api.octopus.energy/v1/products/%(product_code)s/electricity-tariffs/%(tariff)s/standard-unit-rates/'
 }
 
-API_KEY = os.environ.get('OCTOPYS_API_KEY')
-MPAN = os.environ.get('OCTOPYS_MPAN')
-SERIAL = os.environ.get('OCTOPYS_SERIAL')
-
 class OctopusClient(object):
-    def __init__(self,api_key:str=API_KEY,retry_count:int=3,retry_wait:int=5):
+    def __init__(self,api_key:str=None,retry_count:int=3,retry_wait:int=5):
         self.api_key = api_key
         if self.api_key==None:
-            raise ValueError("API Key must be provided.")
+            self.api_key = os.environ.get('OCTOPYS_API_KEY')
+            if self.api_key==None:
+                raise ValueError("API Key must be provided.")
         self.retry_count = retry_count
         self.retry_wait=retry_wait
         self.client = OctopusBasicClient(api_key,retry_count,retry_wait)
@@ -51,20 +49,22 @@ class OctopusClient(object):
         resp = self.client.list_tariff_charges(product_code,tariff_code,period_from,period_to,page_size)
         return self._yield_responses(resp)
 
-    def get_meter_point(self,mpan:str=MPAN):
+    def get_meter_point(self,mpan:str=None):
         resp = self.client.get_meter_point(mpan)
         return self._yield_responses(resp)
 
-    def get_consumption(self,mpan:str=MPAN,serial:str=SERIAL,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
+    def get_consumption(self,mpan:str=None,serial:str=None,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
         resp = self.client.get_consumption(mpan,serial,period_from,period_to,page_size,order_by,group_by)
         return self._yield_responses(resp)
 
 class OctopusBasicClient(object):
 
-    def __init__(self,api_key:str=API_KEY,retry_count:int=3,retry_wait:int=5):
+    def __init__(self,api_key:str=None,retry_count:int=3,retry_wait:int=5):
         self.api_key = api_key
         if self.api_key==None:
-            raise ValueError("API Key must be provided.")
+            self.api_key = os.environ.get('OCTOPYS_API_KEY')
+            if self.api_key==None:
+                raise ValueError("API Key must be provided.")
         self.retry_count = retry_count
         self.retry_wait=retry_wait
 
@@ -127,18 +127,24 @@ class OctopusBasicClient(object):
         resp = self._api_call(url,params)    
         return resp
 
-    def get_meter_point(self,mpan:str=MPAN):
+    def get_meter_point(self,mpan:str=None):
         if(mpan==None):
-            raise ValueError("MPAN must be provided")
+            mpan = os.environ.get('OCTOPYS_MPAN')
+            if(mpan==None):
+                raise ValueError("MPAN must be provided")
         url = endpoints['meterpoint'] % {'mpan':mpan}
         resp = self._api_call(url)    
         return resp
 
-    def get_consumption(self,mpan:str=MPAN,serial:str=SERIAL,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
+    def get_consumption(self,mpan:str=None,serial:str=None,period_from:datetime=None,period_to:datetime=None,page_size:int=None,order_by:str=None,group_by:str=None):
         if(mpan==None):
-            raise ValueError("MPAN must be provided")
+            mpan = os.environ.get('OCTOPYS_MPAN')
+            if(mpan==None):
+                raise ValueError("MPAN must be provided")
         if(serial==None):
-            raise ValueError("Serial must be provided")
+            serial = os.environ.get('OCTOPYS_SERIAL')
+            if(serial==None):
+                raise ValueError("Serial must be provided")
         if((not order_by==None) and (order_by not in ['period','-period'])):
             raise ValueError("invalid order_by value")
         if((not group_by==None) and (group_by not in ['hour','day','week','month','quarter'])):

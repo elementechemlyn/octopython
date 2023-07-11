@@ -7,6 +7,9 @@ class Tariff(object):
 class Product(object):
     pass
 
+class ProductSummary(object):
+    pass
+
 class Products(object):
     pass
 
