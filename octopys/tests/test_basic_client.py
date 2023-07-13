@@ -1,25 +1,24 @@
+"""Tests for the OctopusBasicClient"""
 import unittest
-import octopys.client
+from unittest import mock
+import os
+from datetime import datetime
+import requests
 from octopys.client import OctopusBasicClient
 import octopys.utils as utils
-from unittest import mock
-import requests
-import os
 
-from datetime import datetime
-
-def _mock_api_call(self,url:str, params:list=None):
-    retry_count = 0
-    if params:
-        url = '%s%s' % (url,self._build_param_string(params))
-    return url
-
-# This method will replace requests.get to test for url building
 def mocked_requests_get(*args, **kwargs):
+    """Mock for the requests.get function. 
+    Returns:
+      The url that would be called
+    """
     return args[0],kwargs.get('params')
 
-# This method will replace requests.get to test for error retries
 def mocked_requests_error(*args, **kwargs):
+    """Mock for the requests.get function. 
+    Raises:
+      requests.HTTPError
+    """
     raise requests.HTTPError
 
 class TestBasicClient(unittest.TestCase):

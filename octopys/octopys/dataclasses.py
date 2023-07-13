@@ -1,20 +1,28 @@
+"""Python dataclasses to represent json data retrieved from the API
+"""
 from dataclasses import dataclass
 from datetime import datetime
 
-@dataclass   
+@dataclass
 class LinkData(object):
+    """Dataclass to represnt links from json responses
+    """
     href:str
     method:str
     rel:str
 
 @dataclass
-class MeterPointData(object):
+class MeterPointData():
+    """Dataclass to represnt data retrieved from the meter point endpoint
+    """
     mpan:str
     gsp:str
     profile_class:str
 
 @dataclass
-class ProductsData(object):
+class ProductsData():
+    """Dataclass to represnt data retrieved from the products endpoint
+    """
     code:str
     full_name:str
     display_name:str
@@ -32,7 +40,9 @@ class ProductsData(object):
     links:list[LinkData]
 
 @dataclass
-class TariffDetail(object):
+class TariffDetail():
+    """Dataclass to represnt tariff data retrieved from the meter point endpoint
+    """
     code:str
     standard_unit_rate_exc_vat:float
     standard_unit_rate_inc_vat:float
@@ -47,14 +57,18 @@ class TariffDetail(object):
     exit_fees_type:str
     links:list[LinkData]
 
-@dataclass 
-class Tariff(object):
+@dataclass
+class Tariff():
+    """Dataclass to represnt tariffs retrieved from the meter point endpoint
+    """
     gsp:str
     direct_debit_monthly_tariff:TariffDetail
     direct_debit_quarterly_tariff:TariffDetail
 
 @dataclass
-class ProductData(object):
+class ProductData():
+    """Dataclass to represnt data retrieved from the product endpoint
+    """
     code:str
     full_name:str
     display_name:str
@@ -75,4 +89,3 @@ class ProductData(object):
     single_register_gas_tariffs:dict[str:Tariff]
     sample_consumption:dict[str:dict[str:int]]
     links:list[LinkData]
-
