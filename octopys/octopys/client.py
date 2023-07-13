@@ -107,7 +107,7 @@ class OctopusBasicClient(object):
         resp = self._api_call(link_url)
         return resp
             
-    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at:datetime=None):
+    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=None,available_at:datetime=None):
         url = endpoints['products']
         params = [
             ('is_variable',is_variable),
