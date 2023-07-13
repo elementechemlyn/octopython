@@ -1,50 +1,51 @@
+import time
+import os
+from datetime import datetime
 import requests
 import requests.auth
-import time
-from datetime import datetime
 from . import utils
-import os
+
+BASE_URL = 'https://api.octopus.energy'
 
 endpoints = {
-    'consumption':'https://api.octopus.energy/v1/electricity-meter-points/%(mpan)s/meters/%(serial)s/consumption/',
-    'products':'https://api.octopus.energy/v1/products/',
-    'product':'https://api.octopus.energy/v1/products/%(product_code)s/',
-    'meterpoint':'https://api.octopus.energy/v1/electricity-meter-points/%(mpan)s/',
-    'tariff':'https://api.octopus.energy/v1/products/%(product_code)s/electricity-tariffs/%(tariff)s/standard-unit-rates/'
+    'consumption':BASE_URL + '/v1/electricity-meter-points/%(mpan)s/meters/%(serial)s/consumption/',
+    'products':BASE_URL + '/v1/products/',
+    'product':BASE_URL + '/v1/products/%(product_code)s/',
+    'meterpoint':BASE_URL + '/v1/electricity-meter-points/%(mpan)s/',
+    'tariff':BASE_URL + '/v1/products/%(product_code)s/electricity-tariffs/%(tariff)s/standard-unit-rates/',
+    'e_standing_charge':BASE_URL + '/v1/products/%(product_code)s/electricity-tariffs/%(tariff_code)s/standing-charges/',
+    'g_standing_charge':BASE_URL + '/v1/products/%(product_code)s/gas-tariffs/%(tariff_code)s/standing-charges/',
+    'e_standard_rate':BASE_URL + '/v1/products/%(product_code)s/electricity-tariffs/%(tariff_code)s/standard-unit-rates/',
+    'g_standard_rate':BASE_URL + '/v1/products/%(product_code)s/gas-tariffs/%(tariff_code)s/standard-unit-rates/',
+    'e_day_rate':BASE_URL + '/v1/products/%(product_code)s/electricity-tariffs/%(tariff_code)s/day-unit-rates/',
+    'e_night_rate':BASE_URL + '/v1/products/%(product_code)s/electricity-tariffs/%(tariff_code)s/night-unit-rates/',
 }
 
 class OctopusClient(object):
     def __init__(self,api_key:str=None,retry_count:int=3,retry_wait:int=5):
-        self.api_key = api_key
-        if self.api_key==None:
-            self.api_key = os.environ.get('OCTOPYS_API_KEY')
-            if self.api_key==None:
-                raise ValueError("API Key must be provided.")
-        self.retry_count = retry_count
-        self.retry_wait=retry_wait
         self.client = OctopusBasicClient(api_key,retry_count,retry_wait)
 
     def _yield_responses(self,resp):
-            while True:
-                if resp.status_code==200:
-                    json_payload = resp.json()
-                    yield resp.status_code,json_payload
-                    if json_payload['next']==None:
-                        break
-                    else:
-                        resp = self.client.get_next(json_payload['next'])
-                else:
-                    yield resp.status_code,resp.text
+        while True:
+            if resp.status_code==200:
+                json_payload = resp.json()
+                yield resp.status_code,json_payload
+                if json_payload.get('next') is None:
                     break
+                else:
+                    resp = self.client.get_link(json_payload['next'])
+            else:
+                yield resp.status_code,resp.text
+                break
 
-    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at=None):
+    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at:datetime=None):
         resp = self.client.get_products(is_variable,is_green,is_tracker,is_prepay,is_business,available_at)
         return self._yield_responses(resp)
 
     def get_product(self,product_code:str,tariffs_active_at:datetime=None):
         resp = self.client.get_product(product_code,tariffs_active_at)
         return self._yield_responses(resp)
-    
+  
     def list_tariff_charges(self,product_code:str,tariff_code:str,period_from:datetime=None,period_to:datetime=None,page_size:int=None):
         resp = self.client.list_tariff_charges(product_code,tariff_code,period_from,period_to,page_size)
         return self._yield_responses(resp)
@@ -102,15 +103,23 @@ class OctopusBasicClient(object):
                 else:
                     raise x
 
-    def get_next(self,next_url:str):
-        resp = self._api_call(next_url)
+    def get_link(self,link_url:str):
+        resp = self._api_call(link_url)
         return resp
             
-    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at=None):
+    def get_products(self,is_variable:bool=None,is_green:bool=None,is_tracker:bool=None,is_prepay:bool=None,is_business:bool=False,available_at:datetime=None):
         url = endpoints['products']
-        resp = self._api_call(url)    
+        params = [
+            ('is_variable',is_variable),
+            ('is_green',is_green),
+            ('is_tracker',is_tracker),
+            ('is_prepay',is_prepay),
+            ('is_business',is_business),
+            ('available_at',available_at)
+        ]
+        resp = self._api_call(url,params) 
         return resp
-    
+
     def get_product(self,product_code:str,tariffs_active_at:datetime=None):
         url = endpoints['product'] % {'product_code':product_code}
         params = [("tariffs_active_at",tariffs_active_at)]
@@ -160,3 +169,20 @@ class OctopusBasicClient(object):
         resp = self._api_call(url,params)    
         return resp
 
+    def get_electricity_standing_charges(self):
+        pass
+
+    def get_gas_standing_charges(self):
+        pass
+
+    def get_elecricity_standard_unit_rates(self):
+        pass
+
+    def get_gas_standard_unit_rates(self):
+        pass
+
+    def get_elecricity_day_unit_rates(self):
+        pass
+
+    def get_elecricity_night_unit_rates(self):
+        pass
