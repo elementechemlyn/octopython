@@ -72,7 +72,7 @@ def get_consumption(start_time:datetime.datetime,end_time:datetime.datetime):
     #print(resp.json())
     return resp.json()
 
-def get_current_products(brand='OCTOPUS_ENERGY',pattern='^AGILE-FLEX.+'):
+def get_current_products(brand='OCTOPUS_ENERGY',pattern='^AGILE-[0-9].+'):
     matched_products = []
     url = endpoints['products']
     while(not url==None):
@@ -122,6 +122,7 @@ def get_current_agile_rates(start_time):
     products = get_current_products()
     if len(products)>1:
         raise RuntimeError("Got more than one agile product!!!")
+    print(products)
     agile_product = products[0]['code']
     product = get_product(agile_product)
     gsp_tariff = product['single_register_electricity_tariffs'][gsp]
